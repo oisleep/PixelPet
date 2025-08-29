@@ -1,0 +1,40 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.spec
+
+# Logs / temp
+*.log
+*.tmp
+*.bak
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Specific project outputs
+# （如果你需要保留 .spec 文件就注释掉这一行）
+XML同步修改工具_*.spec
+
+# 如果 test.py、core_v1_6.py 这些只是 demo / 临时测试，也可以忽略
+# test.py
+# core_v1_6.py
+# gui_v1_6.py
