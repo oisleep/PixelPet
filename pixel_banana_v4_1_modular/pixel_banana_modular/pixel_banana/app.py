@@ -87,7 +87,6 @@ class PetWindow(QtWidgets.QWidget):
         act_unload.setCheckable(True)
         act_unload.setChecked(self.settings.unload_on_exit)
         m.addAction("设置模型名…", self.change_model)
-        m.addAction("设置称呼…", self.change_user_name)  # ← 新增
         m.addAction("设置城市（天气）…", self.change_city)
         m.addSeparator()
         m.addAction("退出", QtWidgets.QApplication.quit)
@@ -165,8 +164,16 @@ class PetWindow(QtWidgets.QWidget):
         if choice < 0.3:
             self.say(f"现在是 {datetime.now().strftime('%Y-%m-%d, %H:%M')} 咯~")
         elif choice < 0.55:
-            text = weather.by_city(self.settings.city) if self.settings.city else None
-            self.say(text or "天气怎么样？☀️")
+            if self.settings.city:
+                html = weather.card_html(self.settings.city, hours=6)
+                if html:
+                    self.say(html)  # QLabel 会自动渲染 HTML；我们已调整尺寸/时长
+                else:
+                    text = weather.by_city(self.settings.city)
+                    warn = weather.alert_summary(self.settings.city)
+                    self.say(((warn + " · ") if warn else "") + (text or "天气怎么样？☀️"))
+            else:
+                self.say("天气怎么样？☀️")
         else:
             if self.client.is_available():
 
@@ -218,14 +225,3 @@ class PetWindow(QtWidgets.QWidget):
             if diff.manhattanLength() >= 2:
                 self.move(self.pos() + diff)
                 self._press_pos = gp
-
-    def change_user_name(self):
-        cur = self.settings.user_name
-        text, ok = QtWidgets.QInputDialog.getText(
-            self, "设置称呼", "我应该怎么称呼你（示例：Barbara）：", text=cur
-        )
-        if ok:
-            name = (text or "").strip() or cur
-            self.settings.user_name = name
-            self.settings.save()
-            self.say(f"好的，我以后就称呼你为「{self.settings.user_name}」。")

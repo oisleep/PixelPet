@@ -21,62 +21,69 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QGraphicsDropShadowEffect
 import sys, time
 
+import re
+from PySide6.QtGui import QTextDocument
+from PySide6 import QtCore, QtGui
+
 
 # -------- Icon --------
 def banana_pixmap(size: int = 32) -> QtGui.QPixmap:
-    w, h = 22, 16
-    s = max(1, min(size // w, size // h))
-    img_w, img_h = w * s, h * s
-    ox, oy = (size - img_w) // 2, (size - img_h) // 2
-
     pm = QtGui.QPixmap(size, size)
     pm.fill(QtCore.Qt.transparent)
     p = QtGui.QPainter(pm)
-    p.setRenderHint(QtGui.QPainter.Antialiasing, False)
+    p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
 
-    body = [
-        "......................",
-        "......1111111.........",
-        "....11111111111....3..",
-        "...1111111111111..3...",
-        "..111111111111111.....",
-        "..1111111111111111....",
-        "..1111111111111111....",
-        "...111111111111111....",
-        "....11111111111111....",
-        ".....111111111111.....",
-        "......1111111111..2...",
-        "........1111111..22...",
-        "..........111.....2...",
-        "............1.........",
-        "......................",
-        "......................",
-    ]
-    c_body, c_shadow = QtGui.QColor(250, 208, 60), QtGui.QColor(210, 170, 50)
-    c_stalk, c_high = QtGui.QColor(90, 60, 40), QtGui.QColor(255, 255, 240)
+    # 画布留一点边距，方便不同尺寸下的视觉
+    margin = max(1, size // 16)
+    rect = QtCore.QRectF(margin, margin, size - 2 * margin, size - 2 * margin)
 
-    points = []
-    for y, row in enumerate(body):
-        for x, ch in enumerate(row):
-            if ch == "1":
-                points.append((x, y, 1))
-    shadow = [
-        (x, y)
-        for y, row in enumerate(body)
-        for x, ch in enumerate(row)
-        if ch == "1" and (y >= 9 or x >= 12)
-    ]
-    for x, y in shadow:
-        points.append((x, y + 1 if y + 1 < h else y, 2))
-    points += [(18, 2, 3), (19, 2, 3), (7, 4, 4), (8, 5, 4), (6, 6, 4)]
+    # 用 0–100 的归一坐标来描述香蕉曲线
+    def X(x): return rect.left() + rect.width()  * (x / 100.0)
+    def Y(y): return rect.top()  + rect.height() * (y / 100.0)
 
-    for x, y, val in points:
-        color = (
-            c_body
-            if val == 1
-            else c_shadow if val == 2 else c_stalk if val == 3 else c_high
-        )
-        p.fillRect(ox + x * s, oy + y * s, s, s, color)
+    # 香蕉主体（两段三次样条，弯月形）
+    path = QtGui.QPainterPath()
+    path.moveTo(X(12), Y(62))
+    path.cubicTo(X(15), Y(36), X(52), Y(24), X(86), Y(40))
+    path.cubicTo(X(70), Y(70), X(42), Y(88), X(20), Y(86))
+    path.cubicTo(X(12), Y(80), X(10), Y(70), X(12), Y(62))
+
+    # 内填充：明→暗的线性渐变，更像熟香蕉
+    grad = QtGui.QLinearGradient(X(20), Y(40), X(80), Y(86))
+    grad.setColorAt(0.00, QtGui.QColor(255, 236, 110))  # 亮黄高光
+    grad.setColorAt(0.60, QtGui.QColor(250, 208,  60))  # 主体黄
+    grad.setColorAt(1.00, QtGui.QColor(225, 178,  40))  # 暗部
+    p.fillPath(path, grad)
+
+    # 外轮廓：偏棕的描边
+    pen = QtGui.QPen(QtGui.QColor(155, 115, 30))
+    pen.setWidthF(max(1.0, size / 48.0))
+    p.setPen(pen)
+    p.drawPath(path)
+
+    # 侧边高光：一条柔和的亮线
+    hpath = QtGui.QPainterPath()
+    hpath.moveTo(X(28), Y(56))
+    hpath.cubicTo(X(38), Y(38), X(58), Y(34), X(76), Y(46))
+    hpen = QtGui.QPen(QtGui.QColor(255, 255, 245, 150))
+    hpen.setWidthF(max(1.0, size / 60.0))
+    p.setPen(hpen)
+    p.drawPath(hpath)
+
+    # 果柄（蒂）
+    stem = QtGui.QPainterPath()
+    stem.addRoundedRect(QtCore.QRectF(X(82), Y(36), rect.width() * 0.08, rect.height() * 0.10),
+                        max(1.0, size / 32.0), max(1.0, size / 32.0))
+    p.fillPath(stem, QtGui.QColor(90, 60, 40))
+    p.setPen(QtGui.QPen(QtGui.QColor(70, 45, 30)))
+    p.drawPath(stem)
+
+    # 尾端的小深色点
+    tip = QtGui.QPainterPath()
+    tip.addEllipse(QtCore.QRectF(X(16) - size / 100.0, Y(84) - size / 100.0,
+                                 rect.width() * 0.06, rect.height() * 0.06))
+    p.fillPath(tip, QtGui.QColor(120, 80, 20, 230))
 
     p.end()
     return pm
@@ -135,6 +142,7 @@ class PrettyBubble(QWidget):
         self._tail_side = "bottom"
         self._min_width = 140
         self._max_width = 360
+        self._max_html_width = 420  # ⬅︎ HTML 卡片最大宽（新）
         self._last_geo = None
 
         self._auto_close_ms = 5000
@@ -170,6 +178,8 @@ class PrettyBubble(QWidget):
         )
         geo = screen.availableGeometry()
         self._last_geo = geo
+
+        # 仅给「文本」用较大的上限；HTML 的宽度在 _prepare_text 里已经单独限制了
         self.set_max_width(int(geo.width() * 0.60))
 
         self._prepare_text(text)
@@ -191,9 +201,16 @@ class PrettyBubble(QWidget):
         self._pop.stop()
         self._pop.setStartValue(start)
         self._pop.setEndValue(geo_rect)
-        self._pop.start()
+        plain = re.sub(r"<[^>]+>", "", text or "")
+        chars = len(plain.strip())
+        is_html = bool(re.search(r"</?\w+[^>]*>", text or ""))
+        typing_ms = (
+            2200 if (self._typing and not is_html) else 0
+        )  # 你的打字动画大约 2.2s
+        read_ms = max(2500, min(16000, int(chars * 55)))  # ~55ms/字，夹 2.5–16s
+        dur = max(self._auto_close_ms, typing_ms + read_ms)  # 短文仍保留默认最短
         if self._auto_close_ms > 0:
-            self._close_timer.start(self._auto_close_ms)
+            self._close_timer.start(dur)
 
     def fade_out(self):
         anim = QPropertyAnimation(self, b"windowOpacity", self)
@@ -252,11 +269,23 @@ class PrettyBubble(QWidget):
 
     def _prepare_text(self, text: str):
         text = (text or "").strip()
-        fm = QFontMetrics(self._label.font())
-        ideal = fm.horizontalAdvance(text) + 16
-        w_label = max(self._min_width, min(self._max_width, ideal))
+        is_html = bool(re.search(r"</?\w+[^>]*>", text))
+
+        # 先确定标签宽度
+        if is_html:
+            # 依据屏幕宽做一个更小的上限（比如 42%），同时别超过 _max_html_width
+            scr_w = self._last_geo.width() if self._last_geo else 1200
+            w_target = min(int(scr_w * 0.42), self._max_html_width)
+            w_label = max(self._min_width, w_target)
+        else:
+            fm = QFontMetrics(self._label.font())
+            ideal = fm.horizontalAdvance(text) + 16
+            w_label = max(self._min_width, min(self._max_width, ideal))
+
         self._label.setFixedWidth(w_label)
-        if self._typing:
+
+        # HTML 直接一次性渲染，避免逐字把标签拆开
+        if self._typing and not is_html:
             self._full_text = text
             self._type_idx = 0
             self._label.setText("")
@@ -264,6 +293,7 @@ class PrettyBubble(QWidget):
         else:
             self._label.setText(text)
             self._type_timer.stop()
+
         self.adjustSize()
 
     def _type_step(self):
@@ -278,12 +308,21 @@ class PrettyBubble(QWidget):
     def _size_hint_for(self, text: str) -> QtCore.QSize:
         if text == "":
             text = " " * 4
-        fm = QFontMetrics(self._label.font())
-        br = fm.boundingRect(0, 0, self._label.width(), 10_000, Qt.TextWordWrap, text)
-        w = max(self._label.width(), br.width()) + 28
-        h = br.height() + 24 + self._tail_size
+        is_html = bool(re.search(r"</?\w+[^>]*>", text))
+        if is_html:
+            doc = QTextDocument()
+            doc.setHtml(text)
+            doc.setTextWidth(self._label.width())
+            brw, brh = int(doc.size().width()), int(doc.size().height())
+        else:
+            fm = QFontMetrics(self._label.font())
+            br = fm.boundingRect(0, 0, self._label.width(), 10_000, Qt.TextWordWrap, text)
+            brw, brh = br.width(), br.height()
+
+        w = max(self._label.width(), brw) + 28
+        h = brh + 24 + self._tail_size
         if self._last_geo:
-            w = min(w, int(self._last_geo.width() * 0.60))
+            w = min(w, int(self._last_geo.width() * 0.60))  # 仅用于兜底，HTML 之前已被收窄
         return QtCore.QSize(w, h)
 
     def sizeHint(self) -> QtCore.QSize:
@@ -382,15 +421,18 @@ class InputBar(QtWidgets.QWidget):
         self._fade = QtCore.QPropertyAnimation(self, b"windowOpacity", self)
         self._fade.setDuration(160)
         self.setWindowOpacity(0.0)
+        self._fade_conn_hide = False
 
         if sys.platform.startswith("win"):
             self.setGraphicsEffect(None)
 
     def _disconnect_fade_finished(self):
-        try:
-            self._fade.finished.disconnect(self.hide)
-        except Exception:
-            pass
+        if self._fade_conn_hide:
+            try:
+                self._fade.finished.disconnect(self.hide)
+            except (TypeError, RuntimeError):
+                pass
+            self._fade_conn_hide = False
 
     def keyPressEvent(self, e: QtGui.QKeyEvent):
         if e.key() == QtCore.Qt.Key_Escape:
@@ -456,7 +498,9 @@ class InputBar(QtWidgets.QWidget):
         self._fade.setStartValue(self.windowOpacity())
         self._fade.setEndValue(0.0)
         self._fade.setEasingCurve(QtCore.QEasingCurve.InCubic)
-        self._fade.finished.connect(self.hide)
+        if not self._fade_conn_hide:
+            self._fade.finished.connect(self.hide)
+            self._fade_conn_hide = True
         self._fade.start()
 
     def _submit(self):
@@ -469,81 +513,78 @@ class InputBar(QtWidgets.QWidget):
 
 
 # -------- Sprite --------
+# widgets.py —— 替换整个 BananaSprite 类
 class BananaSprite(QtWidgets.QWidget):
     clicked = QtCore.Signal()
 
     def __init__(self, scale: int = 6, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-        self.scale = max(3, scale)
-        self.maturity = 1  # 固定为“正好”
-        self.grid = self._make_grid()
-        self.setFixedSize(self.grid.width * self.scale, self.grid.height * self.scale)
+        self.scale = max(3, int(scale))
+        # 保持与像素版同尺寸：22x16 单位 * scale
+        self.base_w, self.base_h = 11, 8
+        self.setFixedSize(self.base_w * self.scale, self.base_h * self.scale)
+        self._press_pos = None
+        self._press_local = None
+        self._press_ms = 0.0
 
-    class Grid:
-        def __init__(self, w, h, points):
-            self.width, self.height, self.points = w, h, points
-
-    def _make_grid(self) -> "BananaSprite.Grid":
-        w, h = 22, 16
-        pts = set()
-        body = [
-            "......................",
-            "......1111111.........",
-            "....11111111111....3..",
-            "...1111111111111..3...",
-            "..111111111111111.....",
-            "..1111111111111111....",
-            "..1111111111111111....",
-            "...111111111111111....",
-            "....11111111111111....",
-            ".....111111111111.....",
-            "......1111111111..2...",
-            "........1111111..22...",
-            "..........111.....2...",
-            "............1.........",
-            "......................",
-            "......................",
-        ]
-        shadow = [
-            (x, y)
-            for y, row in enumerate(body)
-            for x, ch in enumerate(row)
-            if ch == "1" and (y >= 9 or x >= 12)
-        ]
-        for y, row in enumerate(body):
-            for x, ch in enumerate(row):
-                if ch == "1":
-                    pts.add((x, y, 1))
-        for x, y in shadow:
-            pts.add((x, y + 1 if y + 1 < h else y, 2))
-        pts.add((18, 2, 3))
-        pts.add((19, 2, 3))
-        for x, y in ((7, 4), (8, 5), (6, 6)):
-            pts.add((x, y, 4))
-        return BananaSprite.Grid(w, h, sorted(list(pts)))
+    def _norm_rect(self) -> QtCore.QRectF:
+        # 留一点边距，避免贴边被裁
+        margin = max(1, self.scale // 3)
+        return QtCore.QRectF(margin, margin, self.width() - 2 * margin, self.height() - 2 * margin)
 
     def paintEvent(self, e: QtGui.QPaintEvent):  # noqa
         p = QtGui.QPainter(self)
-        p.setRenderHint(QtGui.QPainter.Antialiasing, False)
-        c_body, c_shadow = QtGui.QColor(250, 208, 60), QtGui.QColor(210, 170, 50)
-        c_stalk, c_high = QtGui.QColor(90, 60, 40), QtGui.QColor(255, 255, 240)
-        for x, y, val in self.grid.points:
-            color = (
-                c_body
-                if val == 1
-                else (
-                    c_shadow
-                    if val == 2
-                    else (
-                        c_stalk
-                        if val == 3
-                        else c_high if val == 4 else QtGui.QColor(0, 0, 0, 0)
-                    )
-                )
-            )
-            p.fillRect(x * self.scale, y * self.scale, self.scale, self.scale, color)
+        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
 
+        r = self._norm_rect()
+        X = lambda x: r.left() + r.width() * (x / 100.0)
+        Y = lambda y: r.top()  + r.height() * (y / 100.0)
+
+        # 轻微投影（柔和体积感）
+        shadow = QtGui.QPainterPath()
+        shadow.moveTo(X(12), Y(64))
+        shadow.cubicTo(X(18), Y(42), X(52), Y(34), X(86), Y(50))
+        shadow.cubicTo(X(70), Y(78), X(40), Y(96), X(18), Y(94))
+        p.fillPath(shadow, QtGui.QColor(0, 0, 0, 40))
+
+        # 主体：两段三次贝塞尔，形状与托盘图标一致
+        path = QtGui.QPainterPath()
+        path.moveTo(X(12), Y(62))
+        path.cubicTo(X(15), Y(36), X(52), Y(24), X(86), Y(40))
+        path.cubicTo(X(70), Y(70), X(42), Y(88), X(20), Y(86))
+        path.cubicTo(X(12), Y(80), X(10), Y(70), X(12), Y(62))
+
+        grad = QtGui.QLinearGradient(X(20), Y(40), X(80), Y(86))
+        grad.setColorAt(0.00, QtGui.QColor(255, 236, 110))  # 高光黄
+        grad.setColorAt(0.60, QtGui.QColor(250, 208,  60))  # 主体黄
+        grad.setColorAt(1.00, QtGui.QColor(225, 178,  40))  # 暗部黄
+        p.fillPath(path, grad)
+
+        pen = QtGui.QPen(QtGui.QColor(155, 115, 30))
+        pen.setWidthF(max(1.0, self.scale / 6.0))
+        p.setPen(pen)
+        p.drawPath(path)
+
+        # 侧边高光
+        hpath = QtGui.QPainterPath()
+        hpath.moveTo(X(28), Y(56))
+        hpath.cubicTo(X(38), Y(38), X(58), Y(34), X(76), Y(46))
+        hpen = QtGui.QPen(QtGui.QColor(255, 255, 245, 160))
+        hpen.setWidthF(max(1.0, self.scale / 7.0))
+        p.setPen(hpen)
+        p.drawPath(hpath)
+
+        # 果柄（蒂）
+        stalk = QtGui.QPainterPath()
+        stalk.addRoundedRect(QtCore.QRectF(X(82), Y(36), r.width() * 0.08, r.height() * 0.10),
+                             max(1.0, self.scale / 4.5), max(1.0, self.scale / 4.5))
+        p.fillPath(stalk, QtGui.QColor(90, 60, 40))
+        p.setPen(QtGui.QPen(QtGui.QColor(70, 45, 30)))
+        p.drawPath(stalk)
+
+    # —— 保持原有“点击触发输入、拖拽移动、右键菜单”的手感 —— #
     def mousePressEvent(self, e: QtGui.QMouseEvent):  # noqa
         if e.button() == QtCore.Qt.LeftButton:
             self._press_pos = e.globalPosition().toPoint()
@@ -551,13 +592,14 @@ class BananaSprite(QtWidgets.QWidget):
             self._press_ms = time.time()
             e.accept()
         elif e.button() == QtCore.Qt.RightButton:
-            self.parent().customContextMenuRequested.emit(e.globalPosition().toPoint())
+            if self.parent():
+                self.parent().customContextMenuRequested.emit(e.globalPosition().toPoint())
             e.accept()
         else:
             e.ignore()
 
     def mouseMoveEvent(self, e: QtGui.QMouseEvent):  # noqa
-        if e.buttons() & QtCore.Qt.LeftButton:
+        if e.buttons() & QtCore.Qt.LeftButton and self._press_pos is not None and self.parent():
             gp = e.globalPosition().toPoint()
             diff = gp - self._press_pos
             if diff.manhattanLength() >= 3:
@@ -566,7 +608,12 @@ class BananaSprite(QtWidgets.QWidget):
 
     def mouseReleaseEvent(self, e: QtGui.QMouseEvent):  # noqa
         if e.button() == QtCore.Qt.LeftButton:
-            moved = (e.position().toPoint() - self._press_local).manhattanLength() > 3
-            dt = time.time() - getattr(self, "_press_ms", time.time())
-            if not moved and dt < 0.3:
+            moved = (e.position().toPoint() - (self._press_local or e.position().toPoint())).manhattanLength()
+            dur = (time.time() - self._press_ms) if self._press_ms else 0
+            if moved < 3 and dur < 0.4:
                 self.clicked.emit()
+            self._press_pos = None
+            e.accept()
+        else:
+            e.ignore()
+
