@@ -390,7 +390,7 @@ class InputBar(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
         self.setWindowFlag(QtCore.Qt.WindowDoesNotAcceptFocus, False)
-        self.setWindowTitle("像素香蕉 · 输入")
+        self.setWindowTitle("香蕉 · 输入")
 
         self.back = QtWidgets.QFrame(self)
         self.back.setStyleSheet(

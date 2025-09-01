@@ -2,6 +2,9 @@
 
 import re
 
+
+MAX_OUTPUT_CHARS = 1200
+
 SOFT_STOPS = [
     "系统：", "用户：", "System:", "User:", "analysis:", "Analysis:",
     "<think>", "</think>", "<analysis>", "</analysis>",
@@ -42,4 +45,5 @@ def strip_thinking(txt: str) -> str:
         txt = txt[m2.end():]
     txt = re.sub(r"^(?:答|助手|Assistant)\s*[:：]\s*", "", txt.strip())
     lines = [line.rstrip() for line in txt.splitlines() if line.strip()]
-    return "\n".join(lines)[:400]
+    out = "\n".join(lines)
+    return out if MAX_OUTPUT_CHARS == 0 else out[:MAX_OUTPUT_CHARS]
