@@ -68,7 +68,7 @@ class LocalModelClient:
         msgs.append({"role": "user", "content": prompt})
 
         msg1 = self._post_chat(
-            msgs, {"num_predict": 128, "temperature": 0.6, "num_ctx": 1024}, keep_alive_sec=200
+            msgs, {"num_predict": 128, "temperature": 0.6, "num_ctx": 1024}, keep_alive_sec=60
         )
         clean1 = strip_thinking(msg1)
         if clean1:
@@ -83,7 +83,7 @@ class LocalModelClient:
         msg2 = self._post_chat(
             msgs2,
             {"num_predict": 128, "temperature": 0.6, "num_ctx": 1024, "stop": SOFT_STOPS},
-            keep_alive_sec=200,
+            keep_alive_sec=60,
         )
         clean2 = strip_thinking(msg2)
         if clean2:
