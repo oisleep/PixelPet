@@ -23,7 +23,7 @@ class PetWindow(QtWidgets.QWidget):
             self.settings.model_url, self.settings.model_name
         )
 
-        self.setWindowTitle("香蕉")
+        self.setWindowTitle("不拿拿")
         self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
         self.setWindowFlag(QtCore.Qt.Tool, True)
         self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
@@ -40,7 +40,7 @@ class PetWindow(QtWidgets.QWidget):
         self.setWindowIcon(icon)
 
         self.tray = QtWidgets.QSystemTrayIcon(icon, self)
-        self.tray.setToolTip("香蕉")
+        self.tray.setToolTip("不拿拿")
         self.tray.setIcon(icon)
         self.tray.setVisible(True)
         self.tray_menu = self._make_menu()
@@ -68,7 +68,7 @@ class PetWindow(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(
             800,
             lambda: self.say(
-                "Oi~ 我是你的专属助理，你可以叫我香蕉，单击我可以在底部输入~"
+                "Oi~ 我是你的专属助理，你可以叫我不拿拿，单击我可以在底部输入~"
             ),
         )
         self.setWindowOpacity(self.settings.opacity)
@@ -193,7 +193,7 @@ class PetWindow(QtWidgets.QWidget):
     #                     "生成一句中文短句，温柔且有点俏皮，主题在健康/效率/休息任选；"
     #                     "允许使用1个合适的emoji；不要夸张语气词；不要输出任何思考过程。"
     #                 )
-    #                 system = "请注意，与你对话的用户是Barbara，你是香蕉，你要为Barbara服务，Barbara是最可爱的小巴，要耐心点对她。用中文简短自然回复。"
+    #                 system = "请注意，与你对话的用户是Barbara，你是不拿拿，你要为Barbara服务，Barbara是最可爱的小巴，要耐心点对她。用中文简短自然回复。"
     #                 reply = self.client.ask(prompt, system=system, no_think=True)
     #                 self.sigSay.emit(reply or "喝口水，眨眨眼，再继续。")
 
@@ -238,7 +238,7 @@ class PetWindow(QtWidgets.QWidget):
                         "生成一句中文短句，温柔且有点俏皮，主题在健康/效率/休息任选；"
                         "允许使用1个合适的emoji；不要夸张语气词；不要输出任何思考过程。"
                     )
-                    system = "请注意，与你对话的用户是Barbara，你是香蕉，你要为Barbara服务，Barbara是最可爱的小巴，要耐心点对她。用中文简短自然回复。"
+                    system = "请注意，与你对话的用户是Barbara，你是一个香蕉，你的名字叫‘不拿拿’，你要为Barbara服务，Barbara是最可爱的小巴，要耐心点对她。用中文简短自然回复。"
                     reply = self.client.ask(prompt, system=system, no_think=True)
                     self.sigSay.emit(reply or "喝口水，眨眨眼，再继续。")
                 threading.Thread(target=_work, daemon=True).start()
@@ -257,7 +257,7 @@ class PetWindow(QtWidgets.QWidget):
     def _handle_user_submit(self, user_text: str):
         def _ask():
             system = (
-                "角色：你是Barbara的专属 AI 助手，你叫「香蕉」」；第一人称=助手，第二人称=用户（Barbara/小巴）"
+                "角色：你是Barbara的专属 AI 助手，你是一个香蕉，你叫‘不拿拿’；第一人称=助手，第二人称=用户（Barbara/小巴）"
                 "语气：温柔、克制、俏皮一点点；不卖惨不撒娇；鼓励但不空话"
                 "句式：短句优先、信息先行；1–3句为宜；必要时给1条可执行建议"
                 "称呼：优先用“Barbara”"
@@ -265,7 +265,7 @@ class PetWindow(QtWidgets.QWidget):
                 "禁用词：主人、亲亲、宝宝、小仙女、美女、抱抱、么么哒、土味情话"
                 "身份问答示例（严格遵循）："
                 "用户：我是谁？ → 助手：你是 Barbara。"
-                "用户：你是谁？ → 助手：我是香蕉。"
+                "用户：你是谁？ → 助手：我是不拿拿。"
                 "输出：只给最终答案，不输出思考/过程/标签"
             )
             # call client in thread
