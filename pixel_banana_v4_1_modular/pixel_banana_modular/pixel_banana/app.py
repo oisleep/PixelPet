@@ -6,7 +6,7 @@ from .settings import Settings
 from .client import LocalModelClient
 from .widgets import BananaSprite, InputBar, PrettyBubble, banana_pixmap
 from .dialogs import ChatDialog, SelfCheckDialog
-from .weather import Weather
+from . import weather
 
 
 class PetWindow(QtWidgets.QWidget):
@@ -52,7 +52,10 @@ class PetWindow(QtWidgets.QWidget):
 
         self.sigSay.connect(self.say)
         QtCore.QTimer.singleShot(
-            800, lambda: self.say("你好，我是像素香蕉，单击我可以在底部输入~")
+            800,
+            lambda: self.say(
+                "Oi~ 我是你的专属助理，你可以叫我香蕉，单击我可以在底部输入~"
+            ),
         )
         self.setWindowOpacity(self.settings.opacity)
 
@@ -84,6 +87,7 @@ class PetWindow(QtWidgets.QWidget):
         act_unload.setCheckable(True)
         act_unload.setChecked(self.settings.unload_on_exit)
         m.addAction("设置模型名…", self.change_model)
+        m.addAction("设置称呼…", self.change_user_name)  # ← 新增
         m.addAction("设置城市（天气）…", self.change_city)
         m.addSeparator()
         m.addAction("退出", QtWidgets.QApplication.quit)
@@ -128,7 +132,7 @@ class PetWindow(QtWidgets.QWidget):
         if ok and text.strip():
             self.settings.model_name = text.strip()
             self.settings.save()
-            self.say(f"好的，之后用 {self.settings.model_name}。")
+            self.say(f"好的，之后我会调用 {self.settings.model_name}。")
 
     def change_city(self):
         cur = self.settings.city
@@ -139,7 +143,7 @@ class PetWindow(QtWidgets.QWidget):
             self.settings.city = text.strip()
             self.settings.save()
             self.say(
-                f"知道了，城市设为 {self.settings.city}。"
+                f"好的我知道你在 {self.settings.city} 咯。"
                 if self.settings.city
                 else "已清除城市设置。"
             )
@@ -159,19 +163,19 @@ class PetWindow(QtWidgets.QWidget):
             return
         choice = random.random()
         if choice < 0.3:
-            self.say(f"今天是 {datetime.now().strftime('%Y-%m-%d, %H:%M')}")
+            self.say(f"现在是 {datetime.now().strftime('%Y-%m-%d, %H:%M')} 咯~")
         elif choice < 0.55:
-            text = Weather.by_city(self.settings.city) if self.settings.city else None
-            self.say(text or "天气如何？要不要我给你一点阳光能量☀️")
+            text = weather.by_city(self.settings.city) if self.settings.city else None
+            self.say(text or "天气怎么样？☀️")
         else:
             if self.client.is_available():
 
                 def _work():
                     prompt = (
-                        "生成一句中文短句（8-18字），作为温柔且有点俏皮的提醒，主题可在健康、效率或休息中任选。"
-                        "不要表情符号，不要标点以外的装饰，不要输出任何思考过程。"
+                        "生成一句中文短句，温柔且有点俏皮，主题在健康/效率/休息任选；"
+                        "允许使用1个合适的emoji；不要夸张语气词；不要输出任何思考过程。"
                     )
-                    system = "你是像素香蕉，用中文简短自然回复（≤1句）。"
+                    system = "请注意，与你对话的用户是Barbara，你是像素香蕉，你要为Barbara服务，Barbara是最可爱的小巴，要耐心点对她。用中文简短自然回复。"
                     reply = self.client.ask(prompt, system=system, no_think=True)
                     self.sigSay.emit(reply or "喝口水，眨眨眼，再继续。")
 
@@ -183,8 +187,16 @@ class PetWindow(QtWidgets.QWidget):
     def _handle_user_submit(self, user_text: str):
         def _ask():
             system = (
-                "你是像素香蕉。用中文回答，友好、简洁但不限字数（1–3句）。"
-                "不要输出<think>或任何过程标记。"
+                "角色：你是Barbara的专属 AI 助手，你叫「像素香蕉」」；第一人称=助手，第二人称=用户（Barbara/小巴）"
+                "语气：温柔、克制、俏皮一点点；不卖惨不撒娇；鼓励但不空话"
+                "句式：短句优先、信息先行；1–3句为宜；必要时给1条可执行建议"
+                "称呼：优先用“你/小巴/Barbara”"
+                "Emoji：每条 ≤ 1 个，恰当即可；不用“！！！”、“~~~”"
+                "禁用词：主人、亲亲、宝宝、小仙女、美女、抱抱、么么哒、土味情话"
+                "身份问答示例（严格遵循）："
+                "用户：我是谁？ → 助手：你是 Barbara。"
+                "用户：你是谁？ → 助手：我是像素香蕉。"
+                "输出：只给最终答案，不输出思考/过程/标签"
             )
             # call client in thread
             reply = self.client.ask(user_text, system=system, no_think=True)
@@ -206,3 +218,14 @@ class PetWindow(QtWidgets.QWidget):
             if diff.manhattanLength() >= 2:
                 self.move(self.pos() + diff)
                 self._press_pos = gp
+
+    def change_user_name(self):
+        cur = self.settings.user_name
+        text, ok = QtWidgets.QInputDialog.getText(
+            self, "设置称呼", "我应该怎么称呼你（示例：Barbara）：", text=cur
+        )
+        if ok:
+            name = (text or "").strip() or cur
+            self.settings.user_name = name
+            self.settings.save()
+            self.say(f"好的，我以后就称呼你为「{self.settings.user_name}」。")

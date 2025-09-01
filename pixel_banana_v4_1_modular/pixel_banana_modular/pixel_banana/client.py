@@ -66,7 +66,7 @@ class LocalModelClient:
         msgs.append({"role": "user", "content": prompt})
 
         msg1 = self._post_chat(
-            msgs, {"num_predict": 256, "temperature": 0.6}, keep_alive_sec=0
+            msgs, {"num_predict": 192, "temperature": 0.6}, keep_alive_sec=200
         )
         clean1 = strip_thinking(msg1)
         if clean1:
@@ -80,8 +80,8 @@ class LocalModelClient:
             }
         msg2 = self._post_chat(
             msgs2,
-            {"num_predict": 256, "temperature": 0.6, "stop": SOFT_STOPS},
-            keep_alive_sec=0,
+            {"num_predict": 192, "temperature": 0.6, "stop": SOFT_STOPS},
+            keep_alive_sec=200,
         )
         clean2 = strip_thinking(msg2)
         if clean2:
@@ -107,9 +107,9 @@ class LocalModelClient:
     def _fallback(prompt: str) -> str:
         p = prompt.strip()
         if any(k in p for k in ("你好", "hello", "hi")):
-            return "你好，我是像素香蕉。今天也要补充维生素C！"
+            return "hi~ 我是Barbara的专属助理像素香蕉。今天也要多喝水奥！"
         if "天气" in p:
             return "关于天气：我可以试着查一下，但现在先给你一缕想象中的阳光☀️"
         if len(p) < 10:
             return "收到~"
-        return "我在这儿，慢慢说。"
+        return "我现在脑子不太好使，要不去问问daddy吧~"
