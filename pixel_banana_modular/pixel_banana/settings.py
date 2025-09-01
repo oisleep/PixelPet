@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +16,7 @@ DEFAULT_CFG = {
     "unload_on_exit": True,
 }
 
+
 @dataclass
 class Settings:
     model_url: str = DEFAULT_CFG["model_url"]
@@ -34,7 +34,9 @@ class Settings:
             if CONF_PATH.exists():
                 data.update(json.loads(CONF_PATH.read_text(encoding="utf-8")))
             else:
-                CONF_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                CONF_PATH.write_text(
+                    json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
             return cls(**data)
         except Exception:
             return cls()
@@ -49,4 +51,6 @@ class Settings:
             "unload_on_exit": self.unload_on_exit,
         }
         CONF_DIR.mkdir(parents=True, exist_ok=True)
-        CONF_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        CONF_PATH.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
