@@ -35,3 +35,13 @@ Thumbs.db
 XML同步修改工具_*.spec
 
 
+*.png
+*.zip
+
+./release/
+./dist/
+./build/
+./__pycache__/
+./*.pyc
+
+*.sh
